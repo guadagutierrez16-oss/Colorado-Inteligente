@@ -274,6 +274,24 @@ details.qb li.right::after{content:" ✔ correcta"}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+/* ---------- salas online ---------- */
+.menu .big.wide{grid-column:1/-1}
+.roomcard{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+.roomcard>*{position:relative;z-index:1}
+.roomcard .lbl{font-family:var(--font-display);font-weight:800;text-transform:uppercase;letter-spacing:.1em;font-size:.68rem;color:var(--c1)}
+.roomcode{font-family:var(--font-display);font-weight:900;font-size:clamp(2.4rem,14vw,4.4rem);letter-spacing:.16em;padding-left:.16em;line-height:1.1;background:var(--metal);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 16px var(--c1))}
+.linkrow{display:flex;gap:8px;width:100%;align-items:center}
+.linkrow input{flex:1;font-size:.85rem;min-height:44px}
+.lp{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1.5px solid var(--edge);border-radius:14px;background:var(--glass);min-width:0}
+.lp .num{flex:none;width:36px;height:36px;border-radius:50%;border:2px solid var(--c);display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:.85rem;background:color-mix(in srgb,var(--c) 25%,#070C26);box-shadow:0 0 12px color-mix(in srgb,var(--c) 60%,transparent)}
+.lp .nm{flex:1;min-width:0;overflow-wrap:anywhere}
+.status{min-height:1.4em;font-weight:700;color:var(--muted)}
+.status.err{color:var(--bad)}
+input.code{font-family:var(--font-display);font-weight:800;font-size:1.7rem;letter-spacing:.3em;text-align:center;text-transform:uppercase;padding-left:.3em}
+.opt.sel{border-color:#fff;background:linear-gradient(145deg,color-mix(in srgb,var(--q) 35%,transparent),rgba(255,255,255,.04)),rgba(9,14,42,.8);box-shadow:0 0 26px var(--q),inset 0 1px 0 rgba(255,255,255,.5),0 5px 0 rgba(0,0,0,.5)}
+.opt.sel .mark{display:inline-flex}
+.opt:disabled{cursor:default}
+
 /* ================= CELULARES (hasta 640 px). La versión de computadora no cambia. ================= */
 @media (max-width:640px){
   html{-webkit-text-size-adjust:100%}
@@ -527,7 +545,7 @@ const sfx = {
 };
 
 /* ---------- estado ---------- */
-const S = { view: 'home', sess: null, iv: null, to: null, recTab: 'solo', bankCat: 'all', bankDiff: 'all', clearing: false, setupMode: 'solo' };
+const S = { busy: false, view: 'home', sess: null, iv: null, to: null, recTab: 'solo', bankCat: 'all', bankDiff: 'all', clearing: false, setupMode: 'solo' };
 const clearTimers = () => { clearInterval(S.iv); clearTimeout(S.to); S.iv = S.to = null; };
 
 function render(html, cls = '', style = '') {
@@ -570,7 +588,7 @@ const screens = {
       <div class="river" aria-hidden="true"></div>
       <nav class="menu" aria-label="Menú principal">
         <button class="btn cy big" data-act="setup" data-mode="solo">${ic('play')}Jugar solo<small>Vos contra el Sistema</small></button>
-        <button class="btn vi big" data-act="setup" data-mode="multi">${ic('users')}Multijugador<small>De 2 a ${MAXP} jugadores</small></button>
+        <button class="btn vi big" data-act="go" data-to="rooms">${ic('users')}Multijugador<small>Salas online hasta ${MAXP} jugadores</small></button>
         <div class="row3">
           <button class="btn bl" data-act="go" data-to="how">${ic('help')}Cómo jugar</button>
           <button class="btn sv" data-act="go" data-to="bank">${ic('book')}Banco de preguntas</button>
@@ -578,7 +596,7 @@ const screens = {
           <button class="btn glass" data-act="go" data-to="settings">${ic('sliders')}Configuración</button>
         </div>
       </nav>
-      <div class="online-note">${ic('globe')}${BANK.length} preguntas sobre la historia de El Colorado. Partidas online, próximamente.</div>`);
+      <div class="online-note">${ic('globe')}${BANK.length} preguntas sobre la historia de El Colorado. Jugá solo o armá una sala con tus amigos.</div>`);
   },
 
   setup(mode) {
@@ -859,31 +877,388 @@ function finalSolo(n, prevBest) {
   if (me.score > bot.score) burst($('.big'), 30);
 }
 
-function finalMulti(n) {
-  const s = S.sess, top = Math.max(...s.players.map(p => p.score));
+function finalMulti(n, players, online) {
+  const s = { players: players || S.sess.players }, top = Math.max(...s.players.map(p => p.score));
   const leaders = s.players.filter(p => p.score === top);
   const tie = leaders.length > 1;
   const sorted = s.players.slice().sort((a, b) => b.score - a.score || b.correct - a.correct);
   const second = sorted.find(p => p.score < top);
   const head = tie ? '¡EMPATE!' : `¡GANÓ ${esc(leaders[0].name.toUpperCase())}!`;
   const sub = tie ? `Empatan con ${top} puntos: ${leaders.map(p => esc(p.name)).join(', ')}` : `${top} puntos${second ? ` · ${top - second.score} de ventaja` : ''}`;
-  const colors = s.players.map((_, i) => ACC[i % 6]);
+  const colors = id => ACC[id % 6];
   const rows = sorted.map(p => {
     const lead = p.score === top;
     return `<tr class="${lead ? 'winner' : ''}"><td><b>${esc(p.name)}</b> ${lead ? `<span class="badge w">${tie ? 'Empate' : 'Ganador'}</span>` : ''}</td>
       <td class="n"><b>${p.score}</b></td><td class="n">${p.correct}</td><td class="n">${n - p.correct}</td><td class="n">${lead ? '—' : '−' + (top - p.score)}</td></tr>`;
   }).join('');
-  const bars = sorted.map(p => `<div class="vsrow"><span class="nm">${esc(p.name)}</span><span class="tr"><i style="width:${top ? p.score / top * 100 : 0}%;--c:${colors[p.id]}"></i></span><span class="pt">${p.score}</span></div>`).join('');
+  const bars = sorted.map(p => `<div class="vsrow"><span class="nm">${esc(p.name)}</span><span class="tr"><i style="width:${top ? p.score / top * 100 : 0}%;--c:${colors(p.id)}"></i></span><span class="pt">${p.score}</span></div>`).join('');
   render(`
     <div class="card result-hero"><span class="pill sun">${ic('trophy')}Resultado de la partida</span><h2>${head}</h2><div class="msg">${sub}</div></div>
     <div class="tablewrap"><table><thead><tr><th>Jugador</th><th class="n">Puntos</th><th class="n">Correctas</th><th class="n">Incorrectas</th><th class="n">Diferencia</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="card vs"><h3>Comparación</h3>${bars}</div>
-    <div class="actions">
+    ${online ? `<div class="actions">
+      ${O && O.role === 'host' ? `<button class="btn cy" data-act="lagain">${ic('repeat')}Volver a la sala</button>` : `<div class="note" style="align-self:center">Esperá a que el anfitrión arme otra partida.</div>`}
+      <button class="btn" data-act="go" data-to="home">${ic('home')}Salir al inicio</button></div>` : `<div class="actions">
       <button class="btn cy" data-act="again">${ic('repeat')}Jugar otra vez</button>
       <button class="btn vi" data-act="switchmode">${ic('swap')}Cambiar modo</button>
-      <button class="btn" data-act="go" data-to="home">${ic('home')}Volver al inicio</button></div>`, '', '--q:var(--c2)');
+      <button class="btn" data-act="go" data-to="home">${ic('home')}Volver al inicio</button></div>`}`, '', '--q:var(--c2)');
   burst($('.result-hero h2'), 30);
 }
+
+/* ---------- SALAS ONLINE ----------
+   Cada jugador usa su propio dispositivo. Un anfitrión crea la sala (código de 5 caracteres) y los demás
+   se conectan con el código o con un enlace. La conexión es directa entre dispositivos (WebRTC, vía PeerJS);
+   el anfitrión es la autoridad: elige las preguntas, mide el tiempo, puntúa y reparte los resultados.
+   Los demás dispositivos nunca reciben la respuesta correcta antes de la revelación. */
+const PEER_URLS = ['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+const ROOM_PREFIX = 'colorado-inteligente-';
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const PEER_CFG = { debug: 0, config: { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' },
+  { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }] } };
+const REVEAL_SECS = 9;
+let O = null; // sala actual (null si no hay)
+
+const genCode = () => Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
+const roomLink = code => location.href.split('#')[0] + '#sala-' + code;
+const safeSend = (c, m) => { try { c.send(m); } catch (e) {} };
+const safeClose = c => { try { c.close(); } catch (e) {} };
+const pub = ps => ps.map(p => ({ id: p.id, name: p.name, alive: p.alive, score: p.score }));
+const cfgNow = () => ({ cats: settings.cats.slice(), diff: settings.diff, count: Math.min(settings.count, pool().length), time: settings.time });
+const setStatus = (t, err) => { const e = $('#status'); if (e) { e.textContent = t; e.className = 'status' + (err ? ' err' : ''); } const b = $('#netbtn'); if (b) b.disabled = !err && !!t; };
+const NETFAIL = 'No se pudo conectar con el servicio de salas. Revisá tu conexión a internet e intentá de nuevo.';
+
+function loadPeerLib() {
+  return new Promise((res, rej) => {
+    if (window.Peer) return res();
+    let k = 0;
+    const next = () => {
+      if (k >= PEER_URLS.length) return rej(new Error('lib'));
+      const s = document.createElement('script'); s.src = PEER_URLS[k++];
+      s.onload = () => (window.Peer ? res() : next()); s.onerror = () => { s.remove(); next(); };
+      document.head.appendChild(s);
+    };
+    next();
+  });
+}
+const openPeer = id => new Promise((res, rej) => {
+  let p; try { p = new Peer(id || undefined, PEER_CFG); } catch (e) { return rej(e); }
+  const t = setTimeout(() => { try { p.destroy(); } catch (e) {} rej({ type: 'timeout' }); }, 12000);
+  p.on('open', () => { clearTimeout(t); res(p); });
+  p.on('error', e => { clearTimeout(t); rej(e); });
+});
+
+function buildQs(n) {
+  return shuffle(pool()).slice(0, n).map(b => {
+    const order = shuffle([0, 1, 2, 3]);
+    return { b, opts: order.map(i => b.opts[i]), right: order.indexOf(b.ans) };
+  });
+}
+
+/* ===== ANFITRIÓN ===== */
+async function createRoom(name) {
+  if (O || S.busy) return; S.busy = true;
+  try {
+    setStatus('Creando sala…');
+    try { await loadPeerLib(); } catch (e) { return setStatus(NETFAIL, true); }
+    let peer, code;
+    for (let k = 0; k < 6 && !peer; k++) {
+      code = genCode();
+      try { peer = await openPeer(ROOM_PREFIX + code); } catch (e) { if (e && e.type === 'unavailable-id') continue; return setStatus(NETFAIL, true); }
+    }
+    if (!peer) return setStatus('No se pudo crear la sala. Intentá de nuevo.', true);
+    const R = { players: [{ id: 0, name, alive: true, score: 0, correct: 0, wrong: 0, none: 0 }], nextId: 1, started: false, phase: 'lobby', round: {} };
+    O = { role: 'host', code, peer, me: { id: 0, name }, players: [], cfg: cfgNow(), n: 0, i: -1, round: {}, R };
+    peer.on('connection', hostOnConn);
+    peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
+    peer.on('error', () => {});
+    S.view = 'lobby'; hostLobbyBroadcast();
+  } finally { S.busy = false; }
+}
+function hb(m) { const R = O.R; R.players.forEach(p => p.conn && p.alive && safeSend(p.conn, m)); onMsg(m); }
+function sendTo(pid, m) { if (pid === 0) return onMsg(m); const p = O.R.players.find(x => x.id === pid); if (p && p.conn && p.alive) safeSend(p.conn, m); }
+function hostLobbyBroadcast() { hb({ t: 'lobby', code: O.code, players: pub(O.R.players), cfg: cfgNow() }); }
+
+function hostOnConn(conn) {
+  conn.on('data', m => hostOnData(conn, m));
+  conn.on('close', () => hostDrop(conn));
+  conn.on('error', () => hostDrop(conn));
+}
+function hostOnData(conn, m) {
+  if (!O || O.role !== 'host' || !m) return;
+  const R = O.R;
+  if (m.t === 'join') {
+    if (conn.pid !== undefined) return;
+    const refuse = reason => { safeSend(conn, { t: 'err', reason }); setTimeout(() => safeClose(conn), 400); };
+    if (R.started) return refuse('La partida ya empezó. Pedile al anfitrión que arme otra.');
+    if (R.players.length >= MAXP) return refuse(`La sala está llena (${MAXP} jugadores).`);
+    let name = String(m.name || '').trim().slice(0, 20) || `Jugador ${R.nextId + 1}`, base = name, k = 2;
+    while (R.players.some(p => p.name.toLowerCase() === name.toLowerCase())) name = `${base} (${k++})`;
+    const p = { id: R.nextId++, name, alive: true, score: 0, correct: 0, wrong: 0, none: 0, conn };
+    conn.pid = p.id; R.players.push(p);
+    safeSend(conn, { t: 'welcome', id: p.id, name });
+    hostLobbyBroadcast();
+  } else if (m.t === 'a') {
+    if (conn.pid !== undefined) hostAnswer(conn.pid, m.i);
+  } else if (m.t === 'bye') hostDrop(conn);
+}
+function hostDrop(conn) {
+  if (!O || O.role !== 'host' || conn.pid === undefined) return;
+  const R = O.R, p = R.players.find(x => x.id === conn.pid);
+  if (!p || !p.alive) return;
+  p.alive = false;
+  if (!R.started) { R.players = R.players.filter(x => x !== p); return hostLobbyBroadcast(); }
+  hb({ t: 'plist', players: pub(R.players) });
+  if (R.phase === 'q' && allAnswered()) hostReveal();
+}
+const allAnswered = () => O.R.players.every(p => !p.alive || O.R.round[p.id]);
+
+function hostStart() {
+  const R = O && O.R; if (!R || R.started || R.players.length < 2) return;
+  const n = Math.min(settings.count, pool().length); if (!n) return toast('No hay preguntas con ese filtro');
+  R.players.forEach(x => { x.score = 0; x.correct = 0; x.wrong = 0; x.none = 0; });
+  R.started = true; R.qs = buildQs(n); R.i = -1; R.limit = settings.time;
+  hb({ t: 'start', n, limit: R.limit, players: pub(R.players) });
+  hostNextQ();
+}
+function hostNextQ() {
+  const R = O && O.R; if (!R) return;
+  clearTimeout(R.to); R.i++;
+  if (R.i >= R.qs.length) return hostEnd();
+  R.round = {}; R.phase = 'q'; R.t0 = Date.now();
+  const q = R.qs[R.i];
+  hb({ t: 'q', i: R.i, n: R.qs.length, cat: q.b.cat, diff: q.b.diff, text: q.b.q, opts: q.opts, limit: R.limit });
+  R.to = setTimeout(hostReveal, R.limit * 1000 + 1500); // por si algún dispositivo no responde
+  if (allAnswered()) hostReveal();
+}
+function hostAnswer(pid, i) {
+  const R = O && O.R; if (!R || R.phase !== 'q' || R.round[pid]) return; // una sola respuesta por jugador y pregunta
+  const p = R.players.find(x => x.id === pid); if (!p || !p.alive) return;
+  const timeout = i === null || i === undefined;
+  if (!timeout && !(Number.isInteger(i) && i >= 0 && i < 4)) return;
+  const q = R.qs[R.i], ms = Math.min(R.limit * 1000, Date.now() - R.t0), rem = Math.max(0, R.limit - ms / 1000);
+  const ok = !timeout && i === q.right, bonus = ok ? Math.round(50 * rem / R.limit) : 0, pts = ok ? 100 + bonus : 0;
+  p.score += pts; if (ok) p.correct++; else { p.wrong++; if (timeout) p.none++; }
+  R.round[pid] = { choice: i, ok, timeout, pts, bonus };
+  sendTo(pid, { t: 'ack' });
+  hb({ t: 'prog', answered: Object.keys(R.round).map(Number) });
+  if (allAnswered()) hostReveal();
+}
+function hostReveal() {
+  const R = O && O.R; if (!R || R.phase !== 'q') return;
+  clearTimeout(R.to); R.phase = 'r';
+  R.players.forEach(p => { if (!R.round[p.id]) { p.wrong++; p.none++; R.round[p.id] = { choice: null, ok: false, timeout: true, pts: 0, bonus: 0 }; } });
+  const q = R.qs[R.i];
+  hb({ t: 'r', i: R.i, right: q.right, exp: q.b.exp, results: R.players.map(p => Object.assign({ id: p.id, name: p.name }, R.round[p.id])), scores: pub(R.players), wait: REVEAL_SECS });
+  R.to = setTimeout(hostNextQ, REVEAL_SECS * 1000);
+}
+function hostEnd() {
+  const R = O.R; R.phase = 'end';
+  hb({ t: 'end', n: R.qs.length, players: R.players.map(p => ({ id: p.id, name: p.name, score: p.score, correct: p.correct, wrong: p.wrong, alive: p.alive })) });
+}
+function hostBackToLobby() {
+  const R = O && O.R; if (!R) return;
+  clearTimeout(R.to); R.players = R.players.filter(p => p.alive); R.players.forEach(p => { p.score = 0; });
+  R.started = false; R.phase = 'lobby'; S.view = 'lobby'; hostLobbyBroadcast();
+}
+
+/* ===== JUGADOR (cliente) ===== */
+async function joinRoom(code, name) {
+  if (O || S.busy) return;
+  code = String(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 5) return setStatus('El código tiene 5 letras o números.', true);
+  S.busy = true;
+  try {
+    setStatus('Conectando…');
+    try { await loadPeerLib(); } catch (e) { return setStatus(NETFAIL, true); }
+    let peer; try { peer = await openPeer(null); } catch (e) { return setStatus(NETFAIL, true); }
+    let opened = false, done = false;
+    const fail = msg => { if (done) return; done = true; try { peer.destroy(); } catch (e) {} setStatus(msg, true); };
+    const conn = peer.connect(ROOM_PREFIX + code, { reliable: true });
+    const to = setTimeout(() => { if (!opened) fail('No se pudo conectar con la sala. Verificá el código y que el anfitrión siga con la sala abierta.'); }, 15000);
+    peer.on('error', e => { if (opened) return; clearTimeout(to); fail(e && e.type === 'peer-unavailable' ? 'No existe una sala con ese código. Revisalo e intentá de nuevo.' : 'No se pudo conectar con la sala. Intentá de nuevo.'); });
+    conn.on('open', () => {
+      opened = true; clearTimeout(to);
+      O = { role: 'client', code, peer, conn, me: { id: null, name }, players: [], cfg: null, n: 0, i: -1, round: {} };
+      safeSend(conn, { t: 'join', name });
+    });
+    conn.on('data', onMsg);
+    conn.on('close', () => { if (O && O.conn === conn && !O.left) hostLost(); });
+  } finally { S.busy = false; }
+}
+function hostLost() {
+  leaveRoom(); S.view = 'lost';
+  render(`<div class="card handoff"><h2>La sala se cerró</h2><p class="muted">El anfitrión se desconectó o cerró la sala.</p>
+    <button class="btn cy" data-act="go" data-to="rooms">${ic('users')}Volver a Multijugador</button></div>`);
+}
+function leaveRoom() {
+  if (!O) return;
+  const o = O; O = null; clearTimers();
+  try {
+    if (o.role === 'host') { clearTimeout(o.R.to); o.R.players.forEach(p => p.conn && safeClose(p.conn)); }
+    else { o.left = true; safeSend(o.conn, { t: 'bye' }); safeClose(o.conn); }
+    o.peer.destroy();
+  } catch (e) {}
+}
+
+/* ===== MENSAJES (anfitrión y clientes comparten esta lógica de pantalla) ===== */
+const ov = () => ({ players: O.players, round: O.round, i: O.i, qs: new Array(O.n).fill(0) });
+function onMsg(m) {
+  if (!O || !m) return;
+  switch (m.t) {
+    case 'welcome': O.me = { id: m.id, name: m.name }; break;
+    case 'lobby':
+      O.players = m.players; O.cfg = m.cfg; O.code = m.code || O.code;
+      if (S.view !== 'oq' && S.view !== 'or') { const was = S.view === 'lobby' && $('#lobby-players'); S.view = 'lobby'; was ? updateLobby() : screens.lobby(); }
+      break;
+    case 'plist': O.players = m.players; if (S.view === 'oq') refreshBoard(); break;
+    case 'err': { const r = m.reason; leaveRoom(); S.view = 'join'; screens.join(); setStatus(r, true); break; }
+    case 'start': O.saved = false; O.n = m.n; O.i = -1; O.limit = m.limit; O.players = m.players; break;
+    case 'q': renderOnlineQ(m); break;
+    case 'prog': O.round = {}; m.answered.forEach(id => { O.round[id] = true; }); if (S.view === 'oq') { refreshBoard(); updateWait(); } break;
+    case 'ack': if (S.view === 'oq') updateWait(); break;
+    case 'r': renderOnlineResult(m); break;
+    case 'end': renderOnlineFinal(m); break;
+  }
+}
+function refreshBoard() { const b = $('.board'); if (b) b.outerHTML = boardHTML(ov(), O.me.id); }
+function updateWait() {
+  const w = $('#wait'); if (!w || !O.locked) return;
+  const alive = O.players.filter(p => p.alive).length, k = Object.keys(O.round).length;
+  w.textContent = `${O.timedOut ? 'Se acabó el tiempo.' : 'Respuesta enviada.'} Esperando a los demás (${Math.min(k, alive)} de ${alive}).`;
+}
+
+function updateLobby() {
+  const host = O.role === 'host';
+  $('#lobby-players').innerHTML = lobbyRows();
+  const c = $('#lobby-count'); if (c) c.textContent = `Jugadores (${O.players.length} de ${MAXP})`;
+  const b = $('#startbtn'); if (b) b.disabled = !(O.players.length >= 2 && pool().length);
+  const s = $('#cfgsum'); if (s && !host) s.innerHTML = cfgSummary();
+}
+const lobbyRows = () => O.players.map((p, i) => `<div class="lp" style="--c:${ACC[p.id % 6]}"><span class="num">${i + 1}</span><b class="nm">${esc(p.name)}</b>
+  ${p.id === 0 ? '<span class="badge w">Anfitrión</span>' : ''}${p.id === O.me.id ? '<span class="badge">Vos</span>' : ''}</div>`).join('');
+function cfgSummary() {
+  const c = O.cfg || cfgNow(), cats = c.cats.length ? c.cats.map(k => CATEGORIES[k].short).join(', ') : 'Todas';
+  const d = c.diff === 'all' ? 'Aleatorio' : DIFFS[c.diff];
+  return `<div><b>Categorías:</b> ${esc(cats)}</div><div><b>Dificultad:</b> ${d}</div><div><b>Preguntas:</b> ${c.count}</div><div><b>Tiempo por pregunta:</b> ${c.time} s</div>`;
+}
+
+/* ===== pantallas online ===== */
+Object.assign(screens, {
+  rooms() {
+    render(`${topbar('Multijugador')}
+      <nav class="menu" aria-label="Modos multijugador">
+        <button class="btn cy big" data-act="go" data-to="create">${ic('globe')}Crear sala<small>Cada jugador desde su dispositivo</small></button>
+        <button class="btn vi big" data-act="go" data-to="join">${ic('users')}Unirme a una sala<small>Con el código de 5 letras</small></button>
+        <button class="btn bl big wide" data-act="setup" data-mode="multi">${ic('user')}Un solo dispositivo<small>Se pasan el celular o la compu</small></button>
+      </nav>
+      <div class="note" style="text-align:center">Las salas online necesitan conexión a internet en todos los dispositivos. Hasta ${MAXP} jugadores.</div>`);
+  },
+  create() {
+    S.view = 'create';
+    render(`${topbar('Crear sala', 'rooms')}
+      <div class="card" style="display:flex;flex-direction:column;gap:14px">
+        <div class="field"><label for="on-name">Tu nombre</label><input type="text" id="on-name" maxlength="20" autocomplete="nickname" placeholder="Anfitrión" value="${esc(settings.onlineName || settings.soloName || '')}"></div>
+        <span class="note">Vas a recibir un código para compartir con los demás jugadores. Elegís las preguntas en la sala.</span>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+      </div>
+      <button class="btn cy" id="netbtn" data-act="createroom">${ic('globe')}Crear sala</button>`, '', '--q:var(--c1)');
+  },
+  join(code = '') {
+    S.view = 'join';
+    render(`${topbar('Unirme a una sala', 'rooms')}
+      <div class="card" style="display:flex;flex-direction:column;gap:14px">
+        <div class="field"><label for="code">Código de la sala</label><input type="text" class="code" id="code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7QMX" value="${esc(code)}"></div>
+        <div class="field"><label for="on-name">Tu nombre</label><input type="text" id="on-name" maxlength="20" autocomplete="nickname" placeholder="Jugador" value="${esc(settings.onlineName || settings.soloName || '')}"></div>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+      </div>
+      <button class="btn vi" id="netbtn" data-act="joinroom">${ic('users')}Unirme</button>`, '', '--q:var(--c2)');
+    if (code) setTimeout(() => $('#on-name')?.focus(), 0);
+  },
+  lobby() {
+    S.view = 'lobby';
+    const host = O.role === 'host';
+    render(`<div class="topbar"><button class="btn small" data-act="leave">${ic('back')}Salir</button><h2>Sala online</h2></div>
+      <div class="card roomcard"><span class="lbl">Código de la sala</span>
+        <div class="roomcode" aria-label="Código de la sala: ${O.code.split('').join(' ')}">${O.code}</div>
+        <div class="linkrow"><input type="text" id="rlink" readonly aria-label="Enlace de invitación" value="${esc(roomLink(O.code))}"><button class="btn small" data-act="copylink">${ic('check')}Copiar enlace</button></div>
+        <span class="note">Los demás entran con el código o con el enlace.</span></div>
+      <div class="card"><div class="field"><span class="lbl" id="lobby-count">Jugadores (${O.players.length} de ${MAXP})</span><div class="players" id="lobby-players">${lobbyRows()}</div></div></div>
+      ${host ? `<div class="card" style="display:flex;flex-direction:column;gap:18px">${filtersHTML()}<span class="note">Tiempo por pregunta: ${settings.time} s (se cambia en Configuración).</span></div>
+        <button class="btn cy" id="startbtn" data-act="lstart" ${O.players.length >= 2 && pool().length ? '' : 'disabled'}>${ic('play')}Comenzar partida</button>`
+      : `<div class="card"><div class="field"><span class="lbl">Partida</span><div id="cfgsum">${cfgSummary()}</div></div></div>
+        <div class="card handoff" style="padding:18px"><span class="muted">Esperando que el anfitrión comience la partida…</span></div>`}`, '', '--q:var(--c1)');
+  }
+});
+
+function renderOnlineQ(m) {
+  S.view = 'oq'; O.i = m.i; O.n = m.n; O.q = m; O.locked = false; O.timedOut = false; O.round = {};
+  render(`
+    <div class="hud"><div class="meta"><span class="qn">Pregunta ${m.i + 1} de ${m.n}</span>
+      <span class="pill">${CATEGORIES[m.cat].short}</span><span class="pill plain">${DIFFS[m.diff]}</span></div>${progressHTML(ov())}</div>
+    ${boardHTML(ov(), O.me.id)}
+    <div class="timer" id="timer" role="timer" aria-label="Tiempo restante"><div class="bar"><div class="fill" id="fill"></div></div><div class="t">${ic('clock')}<span id="tl">${m.limit}</span></div></div>
+    <div class="card qcard"><div class="qhead"><span>${CATEGORIES[m.cat].name}</span><span>Todos responden a la vez</span></div>
+      <div class="qtext" id="qtext">${esc(m.text)}</div></div>
+    <div class="opts" id="opts" role="group" aria-labelledby="qtext">${m.opts.map((o, i) => `
+      <button class="opt" data-act="opick" data-i="${i}"><span class="k">${LET[i]}</span><span class="tx">${esc(o)}</span>
+      <span class="mark">${ic('check')}<span class="mt"></span></span></button>`).join('')}</div>
+    <div id="fb" aria-live="polite"><div class="note" id="wait"></div></div>`, '', `--q:${ACC[m.i % 6]}`);
+  const t0 = Date.now(); let last = m.limit;
+  S.iv = setInterval(() => {
+    const left = Math.max(0, m.limit - (Date.now() - t0) / 1000), secs = Math.ceil(left);
+    const fill = $('#fill'), tl = $('#tl'), t = $('#timer');
+    if (fill) fill.style.transform = `scaleX(${left / m.limit})`;
+    if (tl) tl.textContent = secs;
+    if (t) t.classList.toggle('low', left <= 8);
+    if (secs <= 5 && secs < last && secs > 0 && !O.locked) sfx.tick();
+    last = secs;
+    if (left <= 0) { clearInterval(S.iv); if (!O.locked) oPick(null); }
+  }, 100);
+}
+function oPick(i) {
+  if (!O || S.view !== 'oq' || O.locked) return; // una sola respuesta, sin cambios
+  O.locked = true; O.timedOut = i === null; clearInterval(S.iv);
+  document.querySelectorAll('.opt').forEach((b, k) => {
+    b.disabled = true;
+    if (k === i) { b.classList.add('sel'); b.querySelector('.mt').textContent = 'Tu respuesta'; } else b.classList.add('dim');
+  });
+  updateWait(); sfx.click();
+  if (O.role === 'host') hostAnswer(0, i); else safeSend(O.conn, { t: 'a', i });
+}
+
+function renderOnlineResult(m) {
+  S.view = 'or'; clearInterval(S.iv);
+  O.players = m.scores; O.round = {};
+  const q = O.q, mine = m.results.find(r => r.id === O.me.id) || {}, host = O.role === 'host', last = m.i + 1 >= O.n;
+  const rows = m.results.map(r => {
+    const b = r.ok ? `<span class="badge ok">${ic('check')}Correcta</span>` : r.timeout ? `<span class="badge bad">${ic('clock')}Sin responder</span>` : `<span class="badge bad">${ic('x')}Incorrecta</span>`;
+    return `<div class="rr"><span class="nm"><b>${esc(r.name)}</b>${r.id === O.me.id ? ' (vos)' : ''}</span>${b}<span class="p">+${r.pts}</span></div>`;
+  }).join('');
+  const verdict = mine.ok ? `${ic('check')}¡CORRECTO!` : mine.timeout ? `${ic('clock')}¡SE ACABÓ EL TIEMPO!` : `${ic('x')}INCORRECTA`;
+  render(`
+    <div class="hud"><div class="meta"><span class="qn">Resultado de la ronda ${m.i + 1} de ${O.n}</span></div>${progressHTML(ov())}</div>
+    ${boardHTML(ov(), -1)}
+    <div class="card feedback ${mine.ok ? 'ok' : 'bad'}"><div class="verdict">${verdict}</div>
+      ${mine.ok ? `<div class="pts"><span>¡Correcto! +100</span><span>Bonus de velocidad +${mine.bonus}</span><span class="tot">Total +${mine.pts}</span></div>` : ''}</div>
+    <div class="card qcard"><div class="qhead"><span>${CATEGORIES[q.cat].name}</span><span>${DIFFS[q.diff]}</span></div><div class="qtext">${esc(q.text)}</div></div>
+    <div class="card feedback ok"><div class="verdict">${ic('check')}Respuesta correcta: ${LET[m.right]}</div><p><b>${esc(q.opts[m.right])}</b></p><p>${esc(m.exp)}</p></div>
+    <div class="round-rows">${rows}</div>
+    ${host ? `<button class="btn cy" data-act="onext">${last ? 'Ver resultado final' : 'Siguiente pregunta'}${ic('next')}</button>` : ''}
+    <div class="next" style="display:flex;gap:12px;align-items:center"><span class="note">${last ? 'El resultado final aparece en unos segundos.' : 'La siguiente pregunta empieza sola.'}</span><div class="autobar" aria-hidden="true"><i id="auto"></i></div></div>`,
+    '', `--q:${ACC[m.i % 6]}`);
+  const auto = $('#auto');
+  if (auto) { auto.style.transition = `transform ${m.wait}s linear`; requestAnimationFrame(() => requestAnimationFrame(() => { auto.style.transform = 'scaleX(0)'; })); }
+  if (mine.ok) { sfx.ok(); burst($('.feedback .verdict'), 16); } else sfx.bad();
+}
+
+function renderOnlineFinal(m) {
+  S.view = 'ofinal'; clearInterval(S.iv); sfx.end();
+  const me = m.players.find(p => p.id === O.me.id);
+  if (me && !O.saved) { O.saved = true; saveRecords([{ name: me.name, score: me.score, correct: me.correct, total: m.n, date: new Date().toISOString() }], 'ci_rec_multi'); }
+  finalMulti(m.n, m.players, true);
+}
+
 
 /* ---------- efectos ---------- */
 function burst(el, n = 18) {
@@ -910,11 +1285,12 @@ function syncNames() {
 }
 const redo = () => { syncNames(); S.view === 'setup' ? screens.setup(S.setupMode) : screens.settings(); };
 const rebuildFilters = () => { // actualiza chips sin perder lo escrito
+  if (S.view === 'lobby' && O && O.role === 'host') { const y = scrollY; screens.lobby(); scrollTo(0, y); return hostLobbyBroadcast(); }
   syncNames();
   if (S.view === 'setup') screens.setup(S.setupMode); else screens.settings();
 };
 
-const go = to => { S.view = to; S.clearing = false; S.sess = to === 'home' ? null : S.sess; screens[to](); };
+const go = to => { if (O) leaveRoom(); S.view = to; S.clearing = false; S.sess = to === 'home' ? null : S.sess; screens[to](); };
 
 const actions = {
   go: el => go(el.dataset.to),
@@ -938,6 +1314,18 @@ const actions = {
     newSession('multi', names);
   },
   pick: el => pick(+el.dataset.i),
+  opick: el => oPick(+el.dataset.i),
+  createroom: () => { const n = ($('#on-name').value || '').trim() || 'Anfitrión'; settings.onlineName = n; saveSettings(); createRoom(n.slice(0, 20)); },
+  joinroom: () => { const n = ($('#on-name').value || '').trim() || 'Jugador'; settings.onlineName = n; saveSettings(); joinRoom($('#code').value, n.slice(0, 20)); },
+  copylink: () => {
+    const link = roomLink(O.code), inp = $('#rlink');
+    const manual = () => { if (inp) { inp.focus(); inp.select(); } toast('Copiá el enlace seleccionado'); };
+    try { navigator.clipboard.writeText(link).then(() => toast('Enlace copiado'), manual); } catch (e) { manual(); }
+  },
+  lstart: () => hostStart(),
+  onext: () => { if (O && O.role === 'host' && O.R.phase === 'r') hostNextQ(); },
+  lagain: () => hostBackToLobby(),
+  leave: () => go('rooms'),
   ready: () => showQuestion(),
   next: () => { clearTimeout(S.to); nextQuestion(); },
   again: () => { const s = S.sess; newSession(s.mode, s.players.filter(p => !p.bot).map(p => p.name)); },
@@ -958,13 +1346,21 @@ document.addEventListener('click', e => {
   actions[el.dataset.act]?.(el);
 });
 document.addEventListener('keydown', e => {
-  if (S.view !== 'q' || !S.sess || S.sess.locked || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || (document.activeElement && document.activeElement.tagName === 'INPUT')) return;
+  if (S.view === 'oq') { const k = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3 }[e.key.toLowerCase()]; if (k !== undefined) oPick(k); return; }
+  if (S.view !== 'q' || !S.sess || S.sess.locked) return;
   const m = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3 }[e.key.toLowerCase()];
   if (m !== undefined) pick(m);
 });
 
 applyAnim();
-screens.home();
+function checkHash() { // enlace de invitación: #sala-CODIGO
+  const m = /^#sala-([A-Za-z0-9]{5})$/.exec(location.hash);
+  if (!m || O || (S.sess && S.view !== 'home')) return false;
+  S.view = 'join'; screens.join(m[1].toUpperCase()); return true;
+}
+addEventListener('hashchange', checkHash);
+if (!checkHash()) screens.home();
 })();
 
 </script>
