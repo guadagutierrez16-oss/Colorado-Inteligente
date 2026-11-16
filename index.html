@@ -1,9 +1,17 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060A1C">
 <title>Colorado Inteligente</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Exo+2:wght@500;600;700;800&display=swap">
 <style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}
+
 /* Concepto: videojuego futurista sobre la foto real del puente y el río Bermejo.
    Paneles de cristal holográfico con borde neón, relieve metálico y luz turquesa, violeta, azul eléctrico y plata.
    Mundo visual único (oscuro): se define por elección, con fondo y colores explícitos. */
@@ -265,7 +273,99 @@ details.qb li.right::after{content:" ✔ correcta"}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--metal);color:var(--on-sun);padding:10px 18px;border-radius:999px;font-weight:800;z-index:60;box-shadow:0 0 20px rgba(255,255,255,.5)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ================= CELULARES (hasta 640 px). La versión de computadora no cambia. ================= */
+@media (max-width:640px){
+  html{-webkit-text-size-adjust:100%}
+  body{font-size:16px;padding-block:10px 20px;-webkit-tap-highlight-color:transparent}
+  button,.chip,.opt{touch-action:manipulation}
+  .screen{gap:12px}
+  .card{padding:14px;border-radius:16px}
+  .card.qcard{padding:0}
+  input[type=text]{font-size:16px}
+  /* inicio: todo visible sin desplazarse */
+  .hero{padding:12px 0 0}
+  .hero p{font-size:1.05rem}
+  .logo{margin:12px 0 8px}
+  .menu{gap:12px}
+  .menu .big{min-height:92px;flex-direction:row;flex-wrap:wrap;justify-content:flex-start;gap:4px 14px;padding:12px 18px;text-align:left}
+  .menu .big svg{width:2.2em;height:2.2em}
+  .menu .big small{flex-basis:calc(100% - 3.6em);margin-left:auto;margin-top:-4px;text-align:left}
+  .menu .row3{gap:10px}
+  .menu .row3 .btn{flex-direction:row;min-height:64px;font-size:.66rem;gap:8px;padding:8px 10px}
+  .menu .row3 .btn svg{width:1.7em;height:1.7em}
+  .online-note{font-size:.82rem}
+  /* botones principales fijos abajo para llegar con el pulgar */
+  .screen>.btn{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:9;width:100%;min-height:58px}
+  .topbar{gap:10px;flex-wrap:nowrap}
+  .topbar .btn.small{min-height:48px;min-width:48px;padding:8px 12px}
+  .topbar h2{font-size:1.15rem}
+  .chip{min-height:46px}
+  .seg .chip{padding:8px 4px;font-size:.95rem}
+  .prow .btn.small{min-height:46px;min-width:46px}
+  /* partida */
+  .hud{gap:8px 10px}
+  .hud .qn{font-size:.85rem}
+  .qcard .qhead{padding:6px 14px}
+  .qcard .qhead span:last-child{display:none}
+  .qcard .qtext{font-size:1.2rem;padding:14px 16px 16px}
+  .timer{position:sticky;top:env(safe-area-inset-top,0px);z-index:8;gap:10px;padding:6px 10px;margin-inline:-4px;border-radius:14px;
+    background:rgba(5,9,30,.82);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1.5px solid var(--edge)}
+  .timer .bar{height:16px}
+  .timer .t{font-size:1.25rem}
+  .opts{gap:10px}
+  .opt{min-height:64px;padding:8px 12px;gap:12px;font-size:1rem}
+  .opt .k{width:42px;height:42px}
+  .opt .mark{font-size:.56rem}
+  .feedback{gap:10px;padding:14px}
+  .feedback .verdict{font-size:1.05rem}
+  .pts span{font-size:.72rem;padding:3px 10px}
+  .feedback .next{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:9;flex-wrap:nowrap;gap:10px;padding:8px;border:1.5px solid var(--edge);border-radius:16px;
+    background:rgba(5,9,30,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .feedback .next .btn{flex:1;min-height:52px;font-size:.85rem}
+  .feedback .next .autobar{flex:0 0 28%;min-width:0}
+  .board{max-height:84px;gap:6px}
+  .board .b{font-size:.78rem;padding:2px 8px}
+  .handoff{padding:26px 14px;gap:12px}
+  .handoff .avatar{width:80px;height:80px;font-size:2.3rem}
+  .handoff .btn{width:100%}
+  .rr{padding:8px 10px;gap:8px;font-size:.95rem}
+  .badge{font-size:.54rem;padding:2px 8px}
+  /* resultados */
+  .result-hero{padding:20px 14px}
+  .stats{grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:12px}
+  .stat b{font-size:1.45rem}
+  .stat span{font-size:.66rem}
+  .vsrow{grid-template-columns:minmax(64px,96px) 1fr auto;gap:8px}
+  .actions{grid-template-columns:1fr;gap:12px}
+  th,td{padding:9px 10px;font-size:.9rem}
+  /* banco, cómo jugar */
+  .steps{grid-template-columns:1fr}
+  .step{display:grid;grid-template-columns:44px 1fr;column-gap:12px;align-items:center}
+  .step .no{grid-row:span 2}
+  details.qb summary{padding:12px 14px}
+  /* en pantallas táctiles no hay "hover": se evita que quede pegado al tocar */
+  @media (hover:none){
+    .btn:hover,.opt:hover:not([disabled]){transform:none;filter:none}
+    .opt:hover:not([disabled]){border-color:var(--edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -3px 6px rgba(0,0,0,.4),0 5px 0 rgba(0,0,0,.5),0 10px 18px rgba(0,0,0,.4)}
+  }
+}
+/* celular horizontal: opciones en 2 columnas y menos altura */
+@media (max-height:480px) and (orientation:landscape) and (max-width:960px){
+  body{padding-block:6px 12px}
+  .opts{grid-template-columns:1fr 1fr}
+  .qcard .qtext{font-size:1.05rem;padding:10px 14px}
+  .opt{min-height:52px;font-size:.95rem}
+  .opt .k{width:36px;height:36px}
+  .hero{padding-top:4px}.logo{margin:6px 0}.hero p{font-size:.95rem}
+  .menu .big{min-height:76px}.menu .row3{grid-template-columns:repeat(4,1fr)}
+  .handoff{padding:14px}.handoff .avatar{width:56px;height:56px;font-size:1.6rem}
+  .timer{position:sticky;top:0;z-index:8}
+}
 </style>
+</head>
+<body>
 <div id="app"></div>
 <script>
 /* ===== BANCO DE PREGUNTAS =====
@@ -868,3 +968,5 @@ screens.home();
 })();
 
 </script>
+</body>
+</html>
